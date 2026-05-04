@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>LoRaWAN Digital Twin — University of Siegen</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060b14;--panel:#0d1424;--panel2:#111e35;--border:#1a2d4a;
+  --accent:#00c8f8;--green:#00e87a;--yellow:#ffc93c;--red:#ff3b6b;
+  --orange:#ff7a3c;--text:#dce8f5;--muted:#4a6585;--dim:#1e3352;
+  --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding:20px}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(0,200,248,0.06),transparent),
+             linear-gradient(rgba(0,200,248,0.02) 1px,transparent 1px),
+             linear-gradient(90deg,rgba(0,200,248,0.02) 1px,transparent 1px);
+  background-size:100% 100%,50px 50px,50px 50px;pointer-events:none;z-index:0
+}
+.wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto}
+
+/* HEADER */
+header{display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#00c8f8,#0040ff);
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;
+  box-shadow:0 0 24px rgba(0,200,248,0.35);flex-shrink:0}
+.hinfo h1{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.hinfo h1 em{color:var(--accent);font-style:normal}
+.hinfo p{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+.badge{margin-left:auto;display:flex;align-items:center;gap:6px;
+  background:rgba(0,232,122,0.08);border:1px solid rgba(0,232,122,0.3);
+  color:var(--green);font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:20px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.4s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* LAYOUT */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.full{grid-column:1/-1}
+.mt{margin-top:14px}
+
+/* PANELS */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px}
+.card-title{
+  font-size:9px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;
+  letter-spacing:2px;margin-bottom:13px;display:flex;align-items:center;gap:8px
+}
+.card-title::before{content:'';width:2px;height:10px;border-radius:1px;background:var(--accent);display:block}
+
+/* MQTT CONFIG */
+.mqtt-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:grid;gap:5px}
+.field label{font-size:9px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.field input,.field select{
+  background:var(--bg);border:1px solid var(--border);color:var(--text);
+  font-family:var(--mono);font-size:11px;padding:7px 10px;border-radius:7px;
+  outline:none;transition:border-color .2s;width:100%
+}
+.field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,200,248,0.1)}
+.field input::placeholder{color:var(--muted)}
+.field.full-col{grid-column:1/-1}
+.conn-btn{
+  grid-column:1/-1;margin-top:4px;padding:9px;
+  background:linear-gradient(135deg,rgba(0,200,248,0.12),rgba(0,64,255,0.12));
+  border:1px solid var(--accent);color:var(--accent);border-radius:8px;
+  font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;
+  transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px
+}
+.conn-btn:hover{background:rgba(0,200,248,0.2);box-shadow:0 0 16px rgba(0,200,248,0.2)}
+.conn-status{
+  grid-column:1/-1;font-family:var(--mono);font-size:10px;padding:7px 10px;
+  border-radius:7px;border:1px solid;text-align:center;transition:all .3s
+}
+
+/* PAYLOAD DISPLAY */
+.payload{
+  background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  font-family:var(--mono);font-size:10px;line-height:2;padding:12px;
+  max-height:180px;overflow-y:auto;color:var(--muted)
+}
+.k{color:#7dd3fc}.v{color:#86efac}.n{color:#fda4af}.c{color:#c084fc}
+.sim-btn{
+  width:100%;margin-top:10px;padding:9px;
+  background:rgba(255,255,255,0.03);border:1px solid var(--border);
+  color:var(--muted);border-radius:8px;font-family:var(--mono);font-size:11px;
+  cursor:pointer;transition:all .2s
+}
+.sim-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* PREDICTION */
+.pdr-big{text-align:center;padding:16px 0;border-bottom:1px solid var(--border);margin-bottom:14px}
+.pdr-lbl{font-size:9px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
+.pdr-num{font-size:58px;font-weight:800;line-height:1;font-family:var(--mono);transition:color .3s}
+.pdr-unit{font-size:18px;color:var(--muted)}
+.pdr-bar-wrap{margin-top:10px;height:5px;background:var(--dim);border-radius:3px;overflow:hidden}
+.pdr-bar{height:100%;border-radius:3px;transition:width .5s cubic-bezier(.34,1.56,.64,1),background .3s}
+
+/* EVENT FLAGS */
+.flags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;min-height:26px}
+.flag{font-size:9px;font-family:var(--mono);padding:3px 8px;border-radius:4px;border:1px solid}
+
+/* RECOMMENDATION */
+.rec{padding:11px 13px;border-radius:9px;border:1px solid;font-size:11px;font-family:var(--mono);line-height:1.7;transition:all .3s}
+
+/* RISK FACTORS */
+.risk-list{display:grid;gap:6px}
+.risk-item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 10px;border-radius:8px;border:1px solid var(--border);
+  font-size:10px;font-family:var(--mono);transition:all .2s;
+  background:rgba(255,255,255,0.01)
+}
+.risk-name{color:var(--muted)}
+.risk-or{font-weight:700;padding:2px 7px;border-radius:4px;font-size:10px}
+
+/* PACKET STREAM */
+.stream-hdr{font-size:9px;font-family:var(--mono);color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between}
+.stream{height:56px;position:relative;overflow:hidden;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
+.pkt{position:absolute;width:7px;height:7px;border-radius:2px;bottom:8px;animation:fly 2.2s linear forwards}
+@keyframes fly{0%{left:2%;opacity:1;bottom:8px}55%{opacity:1;bottom:28px}100%{left:94%;opacity:0;bottom:28px}}
+
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.stat-box{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.stat-val{font-size:22px;font-weight:800;font-family:var(--mono);color:var(--accent)}
+.stat-lbl{font-size:9px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
+
+/* ARCH */
+.arch{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:12px;overflow-x:auto}
+.arch-row{display:flex;align-items:center;gap:8px;white-space:nowrap;padding:4px 0}
+.anode{
+  background:rgba(0,200,248,0.08);border:1px solid rgba(0,200,248,0.25);
+  color:var(--accent);padding:5px 10px;border-radius:7px;font-size:9px;
+  font-family:var(--mono);white-space:nowrap;text-align:center;line-height:1.4
+}
+.anode.future{border-color:rgba(255,122,60,0.3);color:var(--orange);background:rgba(255,122,60,0.07)}
+.anode.active{border-color:rgba(0,200,248,0.6);box-shadow:0 0 10px rgba(0,200,248,0.15)}
+.arr{color:var(--muted);font-size:13px}
+.arch-note{font-size:9px;font-family:var(--mono);color:var(--muted)}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">LW</div>
+  <div class="hinfo">
+    <h1>LoRaWAN <em>Digital Twin</em></h1>
+    <p>University of Siegen · EMINENT · 6 End Devices · Campus Hölderlinstraße · 868 MHz</p>
+  </div>
+  <div class="badge"><div class="dot"></div><span id="mode-lbl">SIMULATED</span></div>
+</header>
+
+<div class="grid2">
+
+  <!-- LEFT COLUMN -->
+  <div>
+
+    <!-- MQTT CONFIG -->
+    <div class="card">
+      <div class="card-title">MQTT / TTN Connection</div>
+      <div class="mqtt-grid">
+        <div class="field">
+          <label>Broker Host</label>
+          <input id="mqtt-host" type="text" placeholder="eu1.cloud.thethings.network" value="eu1.cloud.thethings.network">
+        </div>
+        <div class="field">
+          <label>Port</label>
+          <input id="mqtt-port" type="text" placeholder="1883" value="1883">
+        </div>
+        <div class="field">
+          <label>Application ID</label>
+          <input id="mqtt-app" type="text" placeholder="lorawan-siegen-v3" value="lorawan-siegen-v3">
+        </div>
+        <div class="field">
+          <label>API Key / Password</label>
+          <input id="mqtt-key" type="password" placeholder="NNSXS.xxxxxxx...">
+        </div>
+        <div class="field full-col">
+          <label>MQTT Topic</label>
+          <input id="mqtt-topic" type="text" placeholder="v3/{app-id}/devices/+/up" value="v3/lorawan-siegen-v3/devices/+/up">
+        </div>
+        <button class="conn-btn" onclick="toggleConnect()">
+          <span id="conn-icon">⚡</span>
+          <span id="conn-text">Connect to TTN</span>
+        </button>
+        <div class="conn-status" id="conn-status"
+             style="border-color:var(--border);color:var(--muted);background:transparent">
+          Not connected — using simulated data
+        </div>
+      </div>
+    </div>
+
+    <!-- INCOMING PAYLOAD -->
+    <div class="card mt">
+      <div class="card-title">Last Received Payload</div>
+      <div class="payload" id="payload-box">Waiting for uplink...</div>
+      <button class="sim-btn" onclick="simulateUplink()">▶ Inject Simulated Uplink</button>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div>
+
+    <!-- PREDICTION -->
+    <div class="card">
+      <div class="card-title">PDR Prediction — Logistic Regression (AUC = 0.804)</div>
+      <div class="pdr-big">
+        <div class="pdr-lbl">Predicted Packet Delivery Rate</div>
+        <div class="pdr-num" id="pdr-num">—<span class="pdr-unit">%</span></div>
+        <div class="pdr-bar-wrap"><div class="pdr-bar" id="pdr-bar" style="width:0%"></div></div>
+      </div>
+      <div class="card-title" style="margin-bottom:8px">Active Event Conditions</div>
+      <div class="flags" id="flags"></div>
+      <div class="rec" id="rec" style="border-color:var(--border);color:var(--muted);background:transparent">
+        Awaiting sensor data...
+      </div>
+    </div>
+
+    <!-- RISK FACTORS -->
+    <div class="card mt">
+      <div class="card-title">Risk Factor Odds Ratios — from LR Model</div>
+      <div class="risk-list" id="risk-list"></div>
+      <div style="margin-top:12px">
+        <div class="stream-hdr">
+          <span>Packet stream simulation · <span id="sf-lbl">SF?</span> · ED3 → Gateway</span>
+          <span id="pkt-stats" style="color:var(--muted)">—</span>
+        </div>
+        <div class="stream" id="stream"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- STATS ROW -->
+<div class="stats-row">
+  <div class="stat-box"><div class="stat-val" id="st-pdr">—</div><div class="stat-lbl">Predicted PDR</div></div>
+  <div class="stat-box"><div class="stat-val" id="st-co2" style="color:var(--yellow)">—</div><div class="stat-lbl">CO₂ (ppm)</div></div>
+  <div class="stat-box"><div class="stat-val" id="st-sf" style="color:var(--orange)">—</div><div class="stat-lbl">Spreading Factor</div></div>
+  <div class="stat-box"><div class="stat-val" id="st-risk" style="color:var(--muted)">—</div><div class="stat-lbl">Top Risk Factor</div></div>
+</div>
+
+<!-- ARCHITECTURE -->
+<div class="card full mt">
+  <div class="card-title">Twin Architecture — Real-Time Pipeline</div>
+  <div class="arch">
+    <div class="arch-row">
+      <div class="anode">ED0–ED5<br>868 MHz</div>
+      <div class="arr">→</div>
+      <div class="anode">LoRaWAN GW<br>Campus</div>
+      <div class="arr">→</div>
+      <div class="anode">TTN Network<br>Server</div>
+      <div class="arr">→</div>
+      <div class="anode active">MQTT Broker<br>eu1.ttn.network</div>
+      <div class="arr">→</div>
+      <div class="anode active">Feature Encoder<br>E1–E18 (this app)</div>
+      <div class="arr">→</div>
+      <div class="anode active">LR Model<br>AUC = 0.804</div>
+      <div class="arr">→</div>
+      <div class="anode active">PDR Prediction<br>+ Risk Flags</div>
+    </div>
+    <div class="arch-row" style="margin-top:8px">
+      <div class="anode future">ED SF Update<br>Downlink</div>
+      <div class="arr">←</div>
+      <div class="anode future">TTN Downlink<br>Queue</div>
+      <div class="arr">←</div>
+      <div class="anode future">Decision Engine<br>SF Optimizer</div>
+      <div class="arr">←</div>
+      <div class="anode future">Threshold<br>Monitor</div>
+      <div class="arr">←</div>
+      <span class="arch-note" style="color:var(--orange)">← Bidirectional control (future work)</span>
+    </div>
+  </div>
+</div>
+
+</div><!-- end wrap -->
+
+<script>
+// ── Model: PDR effects calibrated from thesis LR results ─────────────────
+const BASE = 96.36;
+const FX = {
+  co2_mod:-0.54, co2_high:-2.27, co2_rising:-63.05,
+  pm25_spike:-2.31, pm25_elev:-7.29,
+  sf8:-0.70, sf9:-0.89, sf10:-6.71,
+  peak_wk:-1.89, peak_we:-0.95,
+  humid:-4.28, rssi_weak:-0.02
+};
+const RISK_TABLE = [
+  {id:'co2_rising', label:'CO₂ Rising (E2)',         or:33.57, tip:'Occupancy surge — most critical'},
+  {id:'pm25_elev',  label:'PM2.5 Elevated (E8)',      or:1.99,  tip:'Activity burst detected'},
+  {id:'co2_high',   label:'High CO₂ >700 ppm (E1)',   or:1.36,  tip:'Peak occupancy'},
+  {id:'sf10',       label:'SF10 · ToA 452ms (E13)',    or:1.54,  tip:'Long collision window'},
+  {id:'humid',      label:'Humidity >55% (E11)',       or:1.51,  tip:'Environmental effect'},
+  {id:'rssi_weak',  label:'Weak RSSI (E17)',           or:1.70,  tip:'Signal margin low'},
+  {id:'office',     label:'Office Hours (E5)',         or:1.06,  tip:'Temporal occupancy pattern'},
+];
+
+// ── State ─────────────────────────────────────────────────────────────────
+let state = {co2:null,pm25:null,hum:null,rssi:null,sf:null,tod:null,day:null};
+let connected = false;
+let pktSent = 0, pktLost = 0;
+let co2Prev = null;
+
+// ── Render risk list (static, just highlight active) ─────────────────────
+function renderRiskList(activeSet) {
+  document.getElementById('risk-list').innerHTML = RISK_TABLE.map(r => {
+    const a = activeSet.has(r.id);
+    return `<div class="risk-item" style="border-color:${a?'rgba(255,59,107,.35)':'var(--border)'};background:${a?'rgba(255,59,107,.07)':''}">
+      <span class="risk-name" style="color:${a?'var(--text)':'var(--muted)'}">${r.label}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:9px;font-family:var(--mono);color:var(--muted)">${r.tip}</span>
+        <span class="risk-or" style="color:${a?'var(--red)':'var(--muted)'};background:${a?'rgba(255,59,107,.15)':'rgba(255,255,255,.04)'}">OR ${r.or.toFixed(2)}×</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+renderRiskList(new Set());
+
+// ── PDR computation ───────────────────────────────────────────────────────
+function computePDR(d) {
+  let pdr = BASE;
+  const active = new Set();
+  const flags = [];
+
+  const co2tier = d.co2 <= 500 ? 'bg' : d.co2 <= 700 ? 'mod' : 'high';
+  const rising  = co2Prev !== null && (d.co2 - co2Prev) > 20;
+  co2Prev = d.co2;
+
+  if (co2tier==='mod')  { pdr+=FX.co2_mod;    flags.push({l:'CO₂ Moderate', c:'var(--yellow)'}); }
+  if (co2tier==='high') { pdr+=FX.co2_high;   flags.push({l:'CO₂ High',     c:'var(--red)'});    active.add('co2_high'); }
+  if (rising)           { pdr+=FX.co2_rising; flags.push({l:'⚡ CO₂ Rising', c:'var(--red)'});    active.add('co2_rising'); }
+
+  if (d.pm25 > 10) { pdr+=FX.pm25_elev;  flags.push({l:'PM2.5 Elevated', c:'var(--orange)'}); active.add('pm25_elev'); }
+  else if (d.pm25 > 2) { pdr+=FX.pm25_spike; flags.push({l:'PM2.5 Spike', c:'var(--yellow)'}); }
+
+  if (d.sf===8) pdr+=FX.sf8;
+  if (d.sf===9) pdr+=FX.sf9;
+  if (d.sf===10){ pdr+=FX.sf10; flags.push({l:'SF10 Long ToA', c:'var(--orange)'}); active.add('sf10'); }
+
+  if (d.tod==='peak') {
+    pdr += d.day==='weekday' ? FX.peak_wk : FX.peak_we;
+    flags.push({l:'Peak Hours', c:'var(--muted)'}); active.add('office');
+  }
+  if (d.hum > 55) { pdr+=FX.humid; flags.push({l:'Humid', c:'#7dd3fc'}); active.add('humid'); }
+  if (d.rssi < -90) { pdr+=FX.rssi_weak; active.add('rssi_weak'); }
+
+  return {pdr: Math.max(0,Math.min(100,pdr)), active, flags, rising};
+}
+
+// ── Render prediction ─────────────────────────────────────────────────────
+function renderPrediction(d) {
+  const {pdr, active, flags, rising} = computePDR(d);
+
+  // color
+  const col = pdr>=93?'var(--green)':pdr>=80?'var(--yellow)':'var(--red)';
+  const bar = pdr>=93?'#00e87a':pdr>=80?'#ffc93c':'#ff3b6b';
+
+  document.getElementById('pdr-num').innerHTML = `${pdr.toFixed(2)}<span class="pdr-unit">%</span>`;
+  document.getElementById('pdr-num').style.color = col;
+  document.getElementById('pdr-bar').style.width  = pdr+'%';
+  document.getElementById('pdr-bar').style.background = bar;
+
+  // flags
+  const fb = document.getElementById('flags');
+  fb.innerHTML = flags.length===0
+    ? '<span class="flag" style="border-color:var(--green);color:var(--green)">✓ All nominal</span>'
+    : flags.map(f=>`<span class="flag" style="border-color:${f.c};color:${f.c}">${f.l}</span>`).join('');
+
+  // recommendation
+  const rec = document.getElementById('rec');
+  if (rising) {
+    rec.style.cssText='border-color:var(--red);background:rgba(255,59,107,.06);color:var(--red);padding:11px 13px;border-radius:9px;border:1px solid;font-size:11px;font-family:var(--mono);line-height:1.7';
+    rec.textContent='⚠ CO₂ actively rising — occupancy surge detected. OR = 33.57×. PDR may drop to ~33%. Recommend SF7 + application-layer redundancy.';
+  } else if (pdr < 93) {
+    rec.style.cssText='border-color:var(--yellow);background:rgba(255,201,60,.06);color:var(--yellow);padding:11px 13px;border-radius:9px;border:1px solid;font-size:11px;font-family:var(--mono);line-height:1.7';
+    rec.textContent=`⚡ Degraded channel — PDR ${pdr.toFixed(1)}%. ${d.sf>7?'Reducing SF to SF'+(d.sf-1)+' cuts ToA and collision window.':'High environmental load — monitor CO₂ and PM2.5.'}`;
+  } else {
+    rec.style.cssText='border-color:rgba(0,232,122,.3);background:rgba(0,232,122,.05);color:var(--green);padding:11px 13px;border-radius:9px;border:1px solid;font-size:11px;font-family:var(--mono);line-height:1.7';
+    rec.textContent=`✓ Channel nominal — PDR ${pdr.toFixed(1)}%. SF${d.sf} optimal. No intervention required.`;
+  }
+
+  // risk list
+  renderRiskList(active);
+
+  // stats row
+  document.getElementById('st-pdr').textContent  = pdr.toFixed(1)+'%';
+  document.getElementById('st-pdr').style.color   = col;
+  document.getElementById('st-co2').textContent  = d.co2;
+  document.getElementById('st-sf').textContent   = 'SF'+d.sf;
+  const top = [...active][0];
+  const topName = top ? RISK_TABLE.find(r=>r.id===top)?.label.split(' ')[0]+' '+RISK_TABLE.find(r=>r.id===top)?.label.split(' ')[1] : 'None';
+  document.getElementById('st-risk').textContent = topName;
+  document.getElementById('st-risk').style.color  = active.size>0?'var(--red)':'var(--muted)';
+  document.getElementById('sf-lbl').textContent  = 'SF'+d.sf;
+
+  return pdr;
+}
+
+// ── Payload display ────────────────────────────────────────────────────────
+function renderPayload(d, pdr) {
+  const ts = new Date().toISOString();
+  document.getElementById('payload-box').innerHTML =
+`<span class="c">// TTN MQTT uplink — decoded + twin annotation</span>
+{
+  <span class="k">"end_device_id"</span>: <span class="v">"${d.devId||'eui-a840-41f1-ed3'}"</span>,
+  <span class="k">"received_at"</span>: <span class="v">"${ts}"</span>,
+  <span class="k">"uplink_message"</span>: {
+    <span class="k">"settings"</span>: {
+      <span class="k">"data_rate"</span>: { <span class="k">"lora"</span>: { <span class="k">"spreading_factor"</span>: <span class="n">${d.sf}</span> } }
+    },
+    <span class="k">"rx_metadata"</span>: [{ <span class="k">"rssi"</span>: <span class="n">${d.rssi}</span>, <span class="k">"snr"</span>: <span class="n">${(Math.random()*15-5).toFixed(1)}</span> }],
+    <span class="k">"decoded_payload"</span>: {
+      <span class="k">"co2_ppm"</span>: <span class="n">${d.co2}</span>,
+      <span class="k">"pm25_ugm3"</span>: <span class="n">${d.pm25.toFixed(1)}</span>,
+      <span class="k">"humidity_pct"</span>: <span class="n">${d.hum}</span>,
+      <span class="k">"temperature_c"</span>: <span class="n">${d.temp||22}</span>
+    },
+    <span class="k">"digital_twin"</span>: {
+      <span class="k">"predicted_pdr_pct"</span>: <span class="n">${pdr.toFixed(2)}</span>,
+      <span class="k">"model"</span>: <span class="v">"logistic_regression_v1"</span>,
+      <span class="k">"auc"</span>: <span class="n">0.804</span>,
+      <span class="k">"active_risk_flags"</span>: <span class="n">${[...computePDR(d).active].length}</span>
+    }
+  }
+}`;
+}
+
+// ── Packet stream ──────────────────────────────────────────────────────────
+let currentPDR = 96.36;
+setInterval(()=>{
+  const stream = document.getElementById('stream');
+  const lost = Math.random()*100 > currentPDR;
+  if (lost) pktLost++; pktSent++;
+  const p = document.createElement('div');
+  p.className='pkt';
+  p.style.cssText=`background:${lost?'var(--red)':'var(--green)'};box-shadow:0 0 5px ${lost?'rgba(255,59,107,.8)':'rgba(0,232,122,.8)'};left:2%;bottom:${6+Math.random()*4}px`;
+  stream.appendChild(p);
+  setTimeout(()=>p.remove(),2500);
+  if(pktSent%10===0){
+    const r = ((pktSent-pktLost)/pktSent*100).toFixed(1);
+    document.getElementById('pkt-stats').textContent=`${pktSent} sent · ${pktLost} lost · ${r}% actual`;
+  }
+},900);
+
+// ── Simulate uplink ────────────────────────────────────────────────────────
+function simulateUplink() {
+  const tods = ['night','morning','peak','peak','peak','evening'];
+  const d = {
+    co2:  Math.floor(420 + Math.random()*1200),
+    pm25: parseFloat((Math.random()*18).toFixed(1)),
+    hum:  Math.floor(20 + Math.random()*45),
+    rssi: Math.floor(-115 + Math.random()*75),
+    sf:   [7,7,7,8,9,10][Math.floor(Math.random()*6)],
+    tod:  tods[Math.floor(Math.random()*tods.length)],
+    day:  Math.random()>.3?'weekday':'weekend',
+    temp: Math.floor(18+Math.random()*15),
+    devId:'eui-a840-41f1-ed3',
+  };
+  state = d;
+  currentPDR = renderPrediction(d);
+  renderPayload(d, currentPDR);
+}
+
+// ── Connection mock ────────────────────────────────────────────────────────
+let connectTimer = null;
+function toggleConnect() {
+  if (connected) {
+    connected = false;
+    clearInterval(connectTimer);
+    document.getElementById('conn-text').textContent = 'Connect to TTN';
+    document.getElementById('conn-icon').textContent = '⚡';
+    document.getElementById('mode-lbl').textContent = 'SIMULATED';
+    document.getElementById('conn-status').style.cssText='border-color:var(--border);color:var(--muted);background:transparent;grid-column:1/-1;font-family:var(--mono);font-size:10px;padding:7px 10px;border-radius:7px;border:1px solid;text-align:center';
+    document.getElementById('conn-status').textContent = 'Disconnected';
+    return;
+  }
+  const host = document.getElementById('mqtt-host').value;
+  const app  = document.getElementById('mqtt-app').value;
+  const key  = document.getElementById('mqtt-key').value;
+
+  document.getElementById('conn-status').style.cssText='border-color:var(--yellow);color:var(--yellow);background:rgba(255,201,60,.06);grid-column:1/-1;font-family:var(--mono);font-size:10px;padding:7px 10px;border-radius:7px;border:1px solid;text-align:center';
+  document.getElementById('conn-status').textContent = `Connecting to ${host}...`;
+
+  setTimeout(()=>{
+    // In real implementation: mqtt.connect(host, {username: app, password: key})
+    // For demo: simulate successful connection + auto-inject uplinks
+    connected = true;
+    document.getElementById('conn-text').textContent = 'Disconnect';
+    document.getElementById('conn-icon').textContent = '✕';
+    document.getElementById('mode-lbl').textContent = 'LIVE · TTN';
+    document.getElementById('conn-status').style.cssText='border-color:rgba(0,232,122,.35);color:var(--green);background:rgba(0,232,122,.06);grid-column:1/-1;font-family:var(--mono);font-size:10px;padding:7px 10px;border-radius:7px;border:1px solid;text-align:center';
+    document.getElementById('conn-status').textContent = `✓ Connected · ${host} · Topic: ${document.getElementById('mqtt-topic').value}`;
+    // simulate incoming messages every 60s (device TX interval)
+    simulateUplink();
+    connectTimer = setInterval(simulateUplink, 6000); // 6s for demo, real = 60s
+  }, 1200);
+}
+
+// initial state
+simulateUplink();
+</script>
+</body>
+</html>

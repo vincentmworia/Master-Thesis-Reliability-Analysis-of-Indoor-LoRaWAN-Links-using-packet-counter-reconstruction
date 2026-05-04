@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>LoRaWAN Digital Twin — University of Siegen</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0a0e1a;
+            --panel: #111827;
+            --border: #1e2d45;
+            --accent: #00d4ff;
+            --accent2: #ff6b35;
+            --green: #00ff88;
+            --yellow: #ffd60a;
+            --red: #ff3366;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-sans: 'Syne', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-sans);
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), #0055ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 800;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        h1 span {
+            color: var(--accent);
+        }
+
+        .subtitle {
+            font-size: 11px;
+            color: var(--muted);
+            font-family: var(--font-mono);
+            margin-top: 2px;
+        }
+
+        .live-badge {
+            margin-left: auto;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--green);
+            color: var(--green);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .panel-title {
+            font-size: 10px;
+            font-family: var(--font-mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title::before {
+            content: '';
+            width: 3px;
+            height: 12px;
+            border-radius: 2px;
+            background: var(--accent);
+            display: block;
+        }
+
+        .sensor-grid {
+            display: grid;
+            gap: 13px;
+        }
+
+        .sensor-row {
+            display: grid;
+            gap: 5px;
+        }
+
+        .sensor-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+
+        .sensor-name {
+            color: var(--muted);
+            font-family: var(--font-mono);
+        }
+
+        .sensor-val {
+            color: var(--text);
+            font-weight: 700;
+            font-family: var(--font-mono);
+            font-size: 13px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid var(--bg);
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.5);
+        }
+
+        select {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            width: 100%;
+            outline: none;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+
+        .selects {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .sel-label {
+            font-size: 10px;
+            font-family: var(--font-mono);
+            color: var(--muted);
+            margin-bottom: 3px;
+        }
+
+        /* prediction */
+        .pred-center {
+            text-align: center;
+            padding: 18px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 14px;
+        }
+
+        .pred-label {
+            font-size: 10px;
+            font-family: var(--font-mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .pred-value {
+            font-size: 54px;
+            font-weight: 800;
+            line-height: 1;
+            font-family: var(--font-mono);
+            transition: color 0.3s;
+        }
+
+        .pred-unit {
+            font-size: 18px;
+            color: var(--muted);
+        }
+
+        .pred-bar-wrap {
+            margin-top: 10px;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .pred-bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s;
+        }
+
+        .flags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .flag {
+            font-size: 10px;
+            font-family: var(--font-mono);
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid;
+        }
+
+        .rec-box {
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            line-height: 1.6;
+            transition: all 0.3s;
+        }
+
+        /* risk table */
+        .risk-rows {
+            display: grid;
+            gap: 7px;
+        }
+
+        .risk-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            font-size: 11px;
+            font-family: var(--font-mono);
+            transition: all 0.2s;
+        }
+
+        .risk-or {
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        /* packet stream */
+        .stream-label {
+            font-size: 9px;
+            font-family: var(--font-mono);
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .packet-stream {
+            height: 60px;
+            position: relative;
+            overflow: hidden;
+            background: var(--bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .packet {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            bottom: 10px;
+            animation: fly 2s linear forwards;
+        }
+
+        @keyframes fly {
+            0% {
+                left: 0;
+                opacity: 1;
+                bottom: 10px;
+            }
+            60% {
+                opacity: 1;
+                bottom: 30px;
+            }
+            100% {
+                left: 92%;
+                opacity: 0;
+                bottom: 30px;
+            }
+        }
+
+        /* TTN */
+        .ttn-box {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: #64748b;
+            line-height: 1.9;
+            margin-top: 12px;
+            border: 1px solid var(--border);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .ttn-key {
+            color: #7dd3fc;
+        }
+
+        .ttn-val {
+            color: #86efac;
+        }
+
+        .ttn-num {
+            color: #fda4af;
+        }
+
+        .sim-btn {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.12), rgba(0, 85, 255, 0.12));
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            border-radius: 8px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 700;
+        }
+
+        .sim-btn:hover {
+            background: rgba(0, 212, 255, 0.22);
+            box-shadow: 0 0 16px rgba(0, 212, 255, 0.2);
+        }
+
+        .full {
+            grid-column: 1/-1;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .arch-box {
+            margin-top: 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+        }
+
+        .arch-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 0;
+        }
+
+        .arch-node {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: var(--accent);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
+        .arch-arrow {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .arch-note {
+            color: var(--muted);
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+
+    <header>
+        <div class="logo">LW</div>
+        <div>
+            <h1>LoRaWAN <span>Digital Twin</span></h1>
+            <div class="subtitle">University of Siegen · EMINENT · Indoor Office · 6 EDs · 868MHz · Supervisor Demo
+            </div>
+        </div>
+        <div class="live-badge">
+            <div class="live-dot"></div>
+            SIMULATED · TTN API
+        </div>
+    </header>
+
+    <div class="layout">
+
+        <!-- LEFT: inputs -->
+        <div>
+            <div class="panel">
+                <div class="panel-title">Environmental Sensor Inputs (E1–E18)</div>
+                <div class="sensor-grid">
+                    <div class="sensor-row">
+                        <div class="sensor-label"><span class="sensor-name">CO₂ (ppm) — E1, E2</span><span
+                                class="sensor-val" id="co2-val">520</span></div>
+                        <input type="range" id="co2" min="386" max="1993" value="520" oninput="update()">
+                    </div>
+                    <div class="sensor-row">
+                        <div class="sensor-label"><span class="sensor-name">PM2.5 (µg/m³) — E7, E8</span><span
+                                class="sensor-val" id="pm25-val">1.2</span></div>
+                        <input type="range" id="pm25" min="0" max="50" step="0.5" value="1.2" oninput="update()">
+                    </div>
+                    <div class="sensor-row">
+                        <div class="sensor-label"><span class="sensor-name">Humidity (%) — E11</span><span
+                                class="sensor-val" id="hum-val">38</span></div>
+                        <input type="range" id="hum" min="14" max="70" value="38" oninput="update()">
+                    </div>
+                    <div class="sensor-row">
+                        <div class="sensor-label"><span class="sensor-name">RSSI (dBm) — E17</span><span
+                                class="sensor-val" id="rssi-val">-73</span></div>
+                        <input type="range" id="rssi" min="-128" max="-28" value="-73" oninput="update()">
+                    </div>
+                    <div class="selects">
+                        <div>
+                            <div class="sel-label">Spreading Factor — E13</div>
+                            <select id="sf" onchange="update()">
+                                <option value="7">SF7 · 71.9ms</option>
+                                <option value="8">SF8 · 133.6ms</option>
+                                <option value="9">SF9 · 246.8ms</option>
+                                <option value="10">SF10 · 452.6ms</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="sel-label">Time of Day — E4</div>
+                            <select id="tod" onchange="update()">
+                                <option value="night">Night 00–06</option>
+                                <option value="morning">Morning 07–09</option>
+                                <option value="peak" selected>Peak 10–17</option>
+                                <option value="evening">Evening 18–23</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="sel-label">Day Type — E3</div>
+                            <select id="day" onchange="update()">
+                                <option value="weekday" selected>Weekday</option>
+                                <option value="weekend">Weekend</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TTN mock -->
+            <div class="panel" style="margin-top:16px;">
+                <div class="panel-title">Simulated TTN MQTT Uplink</div>
+                <div class="ttn-box" id="ttn-box">Loading...</div>
+                <button class="sim-btn" onclick="simulateUplink()">▶ Simulate Random Uplink</button>
+            </div>
+        </div>
+
+        <!-- RIGHT: prediction -->
+        <div>
+            <div class="panel">
+                <div class="panel-title">Predicted PDR — Logistic Regression Model</div>
+                <div class="pred-center">
+                    <div class="pred-label">Estimated Packet Delivery Rate</div>
+                    <div class="pred-value" id="pdr-val">96.36<span class="pred-unit">%</span></div>
+                    <div class="pred-bar-wrap">
+                        <div class="pred-bar" id="pred-bar" style="width:96.36%;background:#00ff88;"></div>
+                    </div>
+                </div>
+                <div class="panel-title">Active Event Flags</div>
+                <div class="flags" id="flags-box"></div>
+                <div class="rec-box" id="rec-box"
+                     style="border-color:var(--green);background:rgba(0,255,136,0.05);color:var(--green);">
+                    ✓ Channel conditions nominal. Current SF optimal.
+                </div>
+            </div>
+
+            <div class="panel" style="margin-top:16px;">
+                <div class="panel-title">Dominant Risk Factors (Odds Ratios from LR)</div>
+                <div class="risk-rows" id="risk-rows"></div>
+                <div style="margin-top:14px;">
+                    <div class="stream-label">Simulated packet stream · ED3 → GW · <span id="sf-label">SF7</span></div>
+                    <div class="packet-stream" id="stream"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Architecture diagram -->
+    <div class="panel full" style="margin-top:16px;">
+        <div class="panel-title">Twin Architecture — Proposed Real-Time Pipeline</div>
+        <div class="arch-box">
+            <div class="arch-row">
+                <div class="arch-node">ED0–ED5<br>868MHz</div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-node">LoRaWAN GW<br>Campus</div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-node">TTN<br>MQTT Broker</div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-node">Feature<br>Encoder (E1–E18)</div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-node">LR Model<br>(AUC=0.804)</div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-node">PDR Prediction<br>+ Risk Flags</div>
+                <div class="arch-note" style="margin-left:8px;">← this demo</div>
+            </div>
+            <div class="arch-row" style="margin-top:8px;">
+                <div class="arch-node" style="border-color:rgba(255,107,53,0.4);color:var(--accent2)">Adaptive SF<br>Downlink
+                </div>
+                <div class="arch-arrow">←</div>
+                <div class="arch-node" style="border-color:rgba(255,107,53,0.4);color:var(--accent2)">Decision<br>Engine
+                </div>
+                <div class="arch-arrow">←</div>
+                <div class="arch-node" style="border-color:rgba(255,107,53,0.4);color:var(--accent2)">Threshold<br>Monitor
+                </div>
+                <div class="arch-note" style="color:var(--accent2);margin-left:8px;">← bidirectional future work</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const BASE_PDR = 96.36;
+    const EFFECTS = {
+        co2_moderate: -0.54, co2_high: -2.27, co2_rising: -63.05,
+        pm25_spike: -2.31, pm25_elevated: -7.29,
+        sf8: -0.70, sf9: -0.89, sf10: -6.71,
+        peak: -0.95, weekday: -0.94, humid: -4.28, rssi_weak: -0.02,
+    };
+    const OR_TABLE = [
+        {name: 'co2_rising', label: 'CO₂ Rising (E2)', or: 33.57},
+        {name: 'pm25_elev', label: 'PM2.5 Elevated (E8)', or: 1.99},
+        {name: 'sf10', label: 'SF10 — 452ms ToA (E13)', or: 1.54},
+        {name: 'co2_high', label: 'High CO₂ >700ppm (E1)', or: 1.36},
+        {name: 'humid', label: 'Humid >55% (E11)', or: 1.51},
+        {name: 'office', label: 'Office Hours (E5)', or: 1.06},
+        {name: 'rssi_weak', label: 'Weak RSSI (E17)', or: 1.70},
+    ];
+
+    let co2Prev = 520;
+
+    function update() {
+        const co2 = parseFloat(document.getElementById('co2').value);
+        const pm25 = parseFloat(document.getElementById('pm25').value);
+        const hum = parseFloat(document.getElementById('hum').value);
+        const rssi = parseInt(document.getElementById('rssi').value);
+        const sf = parseInt(document.getElementById('sf').value);
+        const tod = document.getElementById('tod').value;
+        const day = document.getElementById('day').value;
+
+        document.getElementById('co2-val').textContent = co2;
+        document.getElementById('pm25-val').textContent = pm25.toFixed(1);
+        document.getElementById('hum-val').textContent = hum;
+        document.getElementById('rssi-val').textContent = rssi;
+        document.getElementById('sf-label').textContent = 'SF' + sf;
+
+        const co2Rising = (co2 - co2Prev) > 20;
+        co2Prev = co2;
+        const co2tier = co2 <= 500 ? 'bg' : co2 <= 700 ? 'mod' : 'high';
+
+        let pdr = BASE_PDR;
+        const activeRiskNames = new Set();
+        const flags = [];
+
+        if (co2tier === 'mod') {
+            pdr += EFFECTS.co2_moderate;
+            flags.push({l: 'CO₂ Moderate', c: 'var(--yellow)'});
+        }
+        if (co2tier === 'high') {
+            pdr += EFFECTS.co2_high;
+            flags.push({l: 'CO₂ High', c: 'var(--red)'});
+            activeRiskNames.add('co2_high');
+        }
+        if (co2Rising) {
+            pdr += EFFECTS.co2_rising;
+            flags.push({l: '⚡ CO₂ Rising', c: 'var(--red)'});
+            activeRiskNames.add('co2_rising');
+        }
+        if (pm25 > 10) {
+            pdr += EFFECTS.pm25_elevated;
+            flags.push({l: 'PM2.5 Elevated', c: 'var(--accent2)'});
+            activeRiskNames.add('pm25_elev');
+        } else if (pm25 > 2) {
+            pdr += EFFECTS.pm25_spike;
+            flags.push({l: 'PM2.5 Spike', c: 'var(--yellow)'});
+        }
+        if (sf === 8) pdr += EFFECTS.sf8;
+        if (sf === 9) pdr += EFFECTS.sf9;
+        if (sf === 10) {
+            pdr += EFFECTS.sf10;
+            flags.push({l: 'SF10 Long ToA', c: 'var(--accent2)'});
+            activeRiskNames.add('sf10');
+        }
+        if (tod === 'peak') {
+            pdr += EFFECTS.peak;
+            if (day === 'weekday') pdr += EFFECTS.weekday;
+            flags.push({l: 'Peak Hours', c: 'var(--muted)'});
+            activeRiskNames.add('office');
+        }
+        if (hum > 55) {
+            pdr += EFFECTS.humid;
+            flags.push({l: 'Humid', c: 'var(--accent)'});
+            activeRiskNames.add('humid');
+        }
+        if (rssi < -90) {
+            pdr += EFFECTS.rssi_weak;
+            flags.push({l: 'Weak RSSI', c: 'var(--muted)'});
+            activeRiskNames.add('rssi_weak');
+        }
+
+        pdr = Math.max(0, Math.min(100, pdr));
+
+        let color = 'var(--green)', bar = '#00ff88';
+        if (pdr < 90) {
+            color = 'var(--yellow)';
+            bar = '#ffd60a';
+        }
+        if (pdr < 70) {
+            color = 'var(--red)';
+            bar = '#ff3366';
+        }
+
+        document.getElementById('pdr-val').innerHTML = `${pdr.toFixed(2)}<span class="pred-unit">%</span>`;
+        document.getElementById('pdr-val').style.color = color;
+        document.getElementById('pred-bar').style.width = pdr + '%';
+        document.getElementById('pred-bar').style.background = bar;
+
+        const fb = document.getElementById('flags-box');
+        fb.innerHTML = flags.length === 0
+            ? '<span class="flag" style="border-color:var(--green);color:var(--green)">✓ All nominal</span>'
+            : flags.map(f => `<span class="flag" style="border-color:${f.c};color:${f.c}">${f.l}</span>`).join('');
+
+        document.getElementById('risk-rows').innerHTML = OR_TABLE.map(r => {
+            const a = activeRiskNames.has(r.name);
+            return `<div class="risk-row" style="border-color:${a ? 'rgba(255,51,102,0.35)' : 'var(--border)'};background:${a ? 'rgba(255,51,102,0.08)' : 'transparent'}">
+      <span style="color:${a ? 'var(--text)' : 'var(--muted)';font-family:var(--font-mono)">${r.label}</span>
+            <span class="risk-or" style="color:${a?'var(--red)':'var(--muted)'};background:${a?'rgba(255,51,102,0.15)':'rgba(255,255,255,0.04)'}">OR ${r.or.toFixed(2)}×</span>
+    </div>`;
+        }).join('');
+
+  const rec = document.getElementById('rec-box');
+  if (co2Rising) {
+    setRec(rec,'var(--red)','rgba(255,51,102,0.05)',
+            `⚠ CO₂ actively rising — occupancy surge. Loss probability 33.6× above baseline. Recommend SF7 + increased redundancy.`
+        );
+          } else if (pdr < 93) {
+            setRec(rec,'var(--yellow)','rgba(255,214,10,0.05)',
+            `⚡ Degraded channel — PDR ${pdr.toFixed(1)}%. ${sf>7?'Consider reducing to SF'+(sf-1)+' to shrink collision window.':'High environmental load detected.'}`
+        );
+          } else {
+            setRec(rec,'var(--green)','rgba(0,255,136,0.05)',
+            `✓ Nominal — PDR ${pdr.toFixed(1)}%. SF${sf} optimal. No intervention required.`
+        );
+          }
+
+          updateTTN(co2, pm25, hum, rssi, sf, pdr);
+        }
+
+        function setRec(el, border, bg, txt) {
+          el.style.borderColor = border; el.style.background = bg; el.style.color = border; el.textContent = txt;
+        }
+
+        function updateTTN(co2, pm25, hum, rssi, sf, pdr) {
+          const ts = new Date().toISOString();
+          document.getElementById('ttn-box').innerHTML =
+
+            `{
+            <span class="ttn-key">"end_device_id"</span>: <span class="ttn-val">"eui-a840-41f1-ed3"</span>,
+            <span class="ttn-key">"received_at"</span>: <span class="ttn-val">"${ts}"</span>,
+            <span class="ttn-key">"uplink_message"</span>: {
+            <span class="ttn-key">"settings"</span>: {<span class="ttn-key">"data_rate"</span>: {<span class="ttn-key">"lora"</span>: {<span class="ttn-key">"spreading_factor"</span>: <span class="ttn-num">${sf}</span>}}},
+            <span class="ttn-key">"rx_metadata"</span>: [{<span class="ttn-key">"rssi"</span>: <span class="ttn-num">${rssi}</span>}],
+            <span class="ttn-key">"decoded_payload"</span>: {
+            <span class="ttn-key">"co2_ppm"</span>: <span class="ttn-num">${co2}</span>,
+            <span class="ttn-key">"pm25_ugm3"</span>: <span class="ttn-num">${pm25.toFixed(1)}</span>,
+            <span class="ttn-key">"humidity_pct"</span>: <span class="ttn-num">${hum}</span>
+            },
+            <span class="ttn-key">"twin_prediction"</span>: {
+            <span class="ttn-key">"pdr_pct"</span>: <span class="ttn-num">${pdr.toFixed(2)}</span>,
+            <span class="ttn-key">"model"</span>: <span class="ttn-val">"logistic_regression_v1"</span>,
+            <span class="ttn-key">"auc"</span>: <span class="ttn-num">0.804</span>
+            }
+            }
+            }`
+        ;
+        }
+
+        function simulateUplink() {
+          document.getElementById('co2').value   = Math.floor(400 + Math.random()*1200);
+          document.getElementById('pm25').value  = (Math.random()*20).toFixed(1);
+          document.getElementById('hum').value   = Math.floor(20 + Math.random()*45);
+          document.getElementById('rssi').value  = Math.floor(-120 + Math.random()*80);
+          document.getElementById('sf').value    = [7,7,7,8,9,10][Math.floor(Math.random()*6)];
+          const tods = ['night','morning','peak','evening'];
+          document.getElementById('tod').value   = tods[Math.floor(Math.random()*4)];
+          update();
+        }
+
+        // packet animation
+        setInterval(() => {
+          const pdr = parseFloat(document.getElementById('pdr-val').textContent);
+          const stream = document.getElementById('stream');
+          const lost = Math.random() * 100 > pdr;
+          const p = document.createElement('div');
+          p.className = 'packet';
+          p.style.background = lost ? 'var(--red)' : 'var(--green)';
+          p.style.boxShadow  = lost ? '0 0 6px rgba(255,51,102,0.8)' : '0 0 6px rgba(0,255,136,0.8)';
+          stream.appendChild(p);
+          setTimeout(() => p.remove(), 2200);
+        }, 900);
+
+        update();
+</script>
+</body>
+</html>
