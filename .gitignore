@@ -1,7 +1,9 @@
 .venv/
 __pycache__/
 *.pyc
-.env
-data
+.envgit status
 figures
 figures_OLD
+
+# Large generated analysis datasets
+data/
